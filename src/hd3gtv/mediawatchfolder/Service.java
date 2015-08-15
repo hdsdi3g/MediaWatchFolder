@@ -1,5 +1,5 @@
 /*
- * This file is part of MyDMAM.
+ * This file is part of MediaWatchFolder.
  * 
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published by
@@ -11,7 +11,7 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU Lesser General Public License for more details.
  * 
- * Copyright (C) hdsdi3g for hd3g.tv 14 août 2015
+ * Copyright (C) hdsdi3g for hd3g.tv 2015
  * 
 */
 package hd3gtv.mediawatchfolder;

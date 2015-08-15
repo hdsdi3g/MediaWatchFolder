@@ -1,5 +1,5 @@
 /*
- * This file is part of MyDMAM.
+ * This file is part of MediaWatchFolder.
  * 
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published by
@@ -11,7 +11,7 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU Lesser General Public License for more details.
  * 
- * Copyright (C) hdsdi3g for hd3g.tv 14 août 2015
+ * Copyright (C) hdsdi3g for hd3g.tv 2015
  * 
 */
 package hd3gtv.mediawatchfolder;
@@ -35,7 +35,12 @@ public class WatchFolderRouter {
 	/**
 	 * In ms
 	 */
-	private long time_to_sleep_between_scans = Long.parseLong(System.getProperty("time_to_sleep_between_scans", "100"));
+	private long time_to_sleep_between_scans = Long.parseLong(System.getProperty("time_to_sleep_between_scans", "1000"));
+	
+	/**
+	 * In bytes.
+	 */
+	private long min_file_size = Long.parseLong(System.getProperty("min_file_size", "10000"));
 	
 	private File source_directory = new File(System.getProperty("source_directory", "."));
 	
@@ -63,34 +68,50 @@ public class WatchFolderRouter {
 	 * throw fatal exec
 	 */
 	public void scan() throws Exception {
-		// TODO
+		Log2.log.debug("Start scan", new Log2Dump("source_directory", source_directory));
 		Files.walkFileTree(source_directory.toPath(), new HashSet<FileVisitOption>(1), 50, file_found_event);
+		Log2.log.debug("End scan", new Log2Dump("source_directory", source_directory));
+		FileDb.clean();
 	}
 	
 	private class FileFoundEvent implements FileVisitor<Path> {
 		
-		@Override
 		public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) throws IOException {
-			// TODO Auto-generated method stub
-			return null;
+			if (attrs.isSymbolicLink()) {
+				return FileVisitResult.SKIP_SUBTREE;
+			}
+			return FileVisitResult.CONTINUE;
 		}
 		
-		@Override
 		public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
-			// TODO Auto-generated method stub
-			return null;
+			if (attrs.isSymbolicLink() | attrs.isRegularFile() == false | file.toFile().isHidden()) {
+				return FileVisitResult.CONTINUE;
+			}
+			if (file.toFile().length() < min_file_size) {
+				return FileVisitResult.CONTINUE;
+			}
+			if (file.endsWith("desktop.ini")) {
+				return FileVisitResult.CONTINUE;
+			}
+			
+			FileDb db_item = FileDb.get(file.toFile());
+			if (db_item == null) {
+				FileDb.put(file.toFile());
+			} else {
+				if (db_item.ifThisFileisGrowing() == false) {
+					Log2.log.debug("File founded and valid", new Log2Dump("file", file.toFile()));
+				}
+			}
+			return FileVisitResult.CONTINUE;
 		}
 		
-		@Override
 		public FileVisitResult visitFileFailed(Path file, IOException exc) throws IOException {
-			// TODO Auto-generated method stub
-			return null;
+			Log2.log.error("Can't visit file", exc, new Log2Dump("file", file.toFile()));
+			return FileVisitResult.CONTINUE;
 		}
 		
-		@Override
 		public FileVisitResult postVisitDirectory(Path dir, IOException exc) throws IOException {
-			// TODO Auto-generated method stub
-			return null;
+			return FileVisitResult.CONTINUE;
 		}
 		
 	}

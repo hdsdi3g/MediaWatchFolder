@@ -1,5 +1,5 @@
 /*
- * This file is part of MyDMAM.
+ * This file is part of MediaWatchFolder.
  * 
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published by
@@ -11,7 +11,7 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU Lesser General Public License for more details.
  * 
- * Copyright (C) hdsdi3g for hd3g.tv 14 août 2015
+ * Copyright (C) hdsdi3g for hd3g.tv 2015
  * 
 */
 package hd3gtv.mediawatchfolder;
@@ -36,12 +36,13 @@ public class FileDb {
 	/**
 	 * In msec.
 	 */
-	private static long time_to_wait_stopped_growing_file = Long.parseLong(System.getProperty("time_to_wait_growing_file", "1000"));
+	private static long time_to_wait_stopped_growing_file = Long.parseLong(System.getProperty("time_to_wait_growing_file", "10000"));
 	
 	private File file;
 	private long last_length;
 	private long last_modified;
 	private long last_checked;
+	private boolean is_validated;
 	
 	private FileDb(File file) throws IOException {
 		if (file.canRead() == false) {
@@ -51,6 +52,7 @@ public class FileDb {
 		last_checked = System.currentTimeMillis();
 		last_modified = file.lastModified();
 		last_length = file.length();
+		is_validated = false;
 	}
 	
 	public boolean ifThisFileisGrowing() {
@@ -76,12 +78,20 @@ public class FileDb {
 		
 		if (last_checked + time_to_wait_stopped_growing_file < System.currentTimeMillis()) {
 			file_has_growing = false;
+		} else {
+			file_has_growing = true;
 		}
 		
-		last_checked = System.currentTimeMillis();
+		if (is_validated & (file_has_growing == false)) {
+			return true;
+		} else {
+			is_validated = false;
+		}
 		
 		if (file_has_growing) {
 			Log2.log.debug("This file has stopped to grow, wait the time to validate", new Log2Dump("file", file));
+		} else {
+			is_validated = true;
 		}
 		
 		return file_has_growing;
@@ -104,6 +114,8 @@ public class FileDb {
 	public static void put(File file) throws IOException, NullPointerException {
 		if (exists(file) == false) {
 			items.put(file, new FileDb(file));
+		} else {
+			Log2.log.error("Item is already in Db", null, new Log2Dump("file", file));
 		}
 	}
 	
@@ -114,7 +126,7 @@ public class FileDb {
 		return null;
 	}
 	
-	public static boolean exists(File file) throws NullPointerException {
+	private static boolean exists(File file) throws NullPointerException {
 		if (file == null) {
 			throw new NullPointerException("\"file\" can't to be null");
 		}
@@ -122,7 +134,7 @@ public class FileDb {
 	}
 	
 	public static void clean() {
-		if (items.size() == 0) {
+		if (items.isEmpty()) {
 			return;
 		}
 		ArrayList<File> old_entries = new ArrayList<File>(items.size());
@@ -134,6 +146,8 @@ public class FileDb {
 		for (int pos = 0; pos < old_entries.size(); pos++) {
 			items.remove(old_entries.get(pos));
 		}
-		Log2.log.debug("Remove old entries", new Log2Dump("count", old_entries.size()));
+		if (old_entries.isEmpty() == false) {
+			Log2.log.debug("Remove old entries", new Log2Dump("count", old_entries.size()));
+		}
 	}
 }
